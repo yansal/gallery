@@ -1,0 +1,6 @@
+<html>
+    {{$imgAddr := .ImgAddr}}
+    {{range .ListResult.Results}}
+    <img src="{{$imgAddr}}?path={{.}}&width=100">
+    {{end}}
+</html>
