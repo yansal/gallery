@@ -1,6 +1,9 @@
 <html>
+    {{$cdnAddr := .CDNAddr}}
     {{$imgAddr := .ImgAddr}}
     {{range .ListResult.Results}}
-    <img src="{{$imgAddr}}?path={{.}}&width=100">
+    <a href="{{$cdnAddr}}/{{.}}">
+        <img src="{{$imgAddr}}?path={{.}}&width=200">
+    </a>
     {{end}}
 </html>

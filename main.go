@@ -23,6 +23,8 @@ func main() {
 
 	templates := template.Must(template.ParseGlob("templates/*"))
 	http.Handle("/", &handler{
+		cdnAddr:   os.Getenv("CDNADDR"),
+		imgAddr:   os.Getenv("IMGADDR"),
 		storage:   storage,
 		templates: templates,
 	})
@@ -36,12 +38,19 @@ func main() {
 }
 
 type handler struct {
+	cdnAddr   string
+	imgAddr   string
 	storage   storage.Storage
 	templates *template.Template
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	err := h.serveHTTP(w, r)
+	var err error
+	if r.URL.Path == "/" {
+		err = h.serveRoot(w, r)
+	} else {
+		err = h.serveGallery(w, r)
+	}
 	if err == nil {
 		return
 	}
@@ -60,30 +69,33 @@ type httpError struct {
 
 func (e httpError) Error() string { return e.err.Error() }
 
-func (h *handler) serveHTTP(w http.ResponseWriter, r *http.Request) error {
-	if r.URL.Path == "/" {
-		res, err := h.storage.List("")
-		if err != nil {
-			return err
-		}
-		if err := h.templates.ExecuteTemplate(w, "index.html", res); err != nil {
-			log.Print(err)
-		}
-	} else {
-		res, err := h.storage.List(r.URL.Path[1:])
-		if err != nil {
-			return err
-		}
-		data := struct {
-			ListResult storage.ListResult
-			ImgAddr    string
-		}{
-			ListResult: res,
-			ImgAddr:    os.Getenv("IMGADDR"),
-		}
-		if err := h.templates.ExecuteTemplate(w, "gallery.html", data); err != nil {
-			log.Print(err)
-		}
+func (h *handler) serveRoot(w http.ResponseWriter, r *http.Request) error {
+	res, err := h.storage.List("")
+	if err != nil {
+		return err
+	}
+	if err := h.templates.ExecuteTemplate(w, "index.html", res); err != nil {
+		log.Print(err)
+	}
+	return nil
+}
+
+func (h *handler) serveGallery(w http.ResponseWriter, r *http.Request) error {
+	res, err := h.storage.List(r.URL.Path[1:])
+	if err != nil {
+		return err
+	}
+	data := struct {
+		CDNAddr    string
+		ImgAddr    string
+		ListResult storage.ListResult
+	}{
+		CDNAddr:    h.cdnAddr,
+		ImgAddr:    h.imgAddr,
+		ListResult: res,
+	}
+	if err := h.templates.ExecuteTemplate(w, "gallery.html", data); err != nil {
+		log.Print(err)
 	}
 	return nil
 }
